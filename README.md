@@ -82,14 +82,15 @@ flowchart TD
 
 ## 📊 4. Empirical Results on Apple Silicon (M-series MPS)
 
-### A. Real LLM Benchmark (`openai-community/gpt2` 124M on `tatsu-lab/alpaca`)
-*Evaluated on real instruction-tuning data using Apple Silicon MPS acceleration:*
+### A. Rigorous 3-Stage LLM Benchmark (`openai-community/gpt2` on `tatsu-lab/alpaca`)
+*Evaluated with the scientific protocol: Full-Precision SFT Teacher $\rightarrow$ PTQ Quantization Deficit $\rightarrow$ QAD Recovery:*
 
-| Model Stage | Quantization | Validation Loss | Perplexity (PPL) | Validation Token Accuracy | Execution Notes |
+| Pipeline Stage | Model Format | Validation Loss | Perplexity (PPL) | Top-1 Token Accuracy | Empirical Observations |
 | :--- | :---: | :---: | :---: | :---: | :--- |
-| **1. Teacher (Baseline)** | FP32 | **3.8477** | **46.88** | — | Pretrained GPT-2 baseline on Alpaca prompt-response pairs |
-| **2. PTQ Student (Zero-Shot)** | INT4 | **3.8399** | **46.52** | — | Direct post-training quantization with STE layers |
-| **3. QAD Student (Distilled)** | INT4 | **2.6499** | **14.15** | **59.84%** | **Massive recovery & domain adaptation: PPL dropped 46.88 → 14.15** |
+| **0. Raw Pretrained Base** | FP32 | **3.7384** | **42.03** | 41.20% | Out-of-the-box pretrained checkpoint before instruction tuning |
+| **1. SFT Teacher (Target Domain)**| FP32 | **2.1643** | **8.71** | **58.37%** | Base model fine-tuned to convergence on Alpaca (The True Teacher) |
+| **2. PTQ Student (Quantized)** | INT4 | **2.2919** | **9.89** | **56.18%** | **Degradation:** Quantization error costs **+0.1276 loss** and drops accuracy by **-2.19%** |
+| **3. QAD Student (Recovered)** | INT4 | **2.2461** | **9.45** | **56.70%** | **Recovery:** Soft-target KL guidance recovers **+0.52% accuracy** and reduces PPL from 9.89 to 9.45 |
 
 ### B. Lightweight Control Benchmark (`MiniTransformerLM`)
 *Fully controlled synthetic language structure benchmark:*
