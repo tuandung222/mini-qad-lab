@@ -92,16 +92,17 @@ flowchart TD
 | **2. PTQ Student (Quantized)** | INT4 | **2.2919** | **9.89** | **56.18%** | **Degradation:** Quantization error costs **+0.1276 loss** and drops accuracy by **-2.19%** |
 | **3. QAD Student (Recovered)** | INT4 | **2.2461** | **9.45** | **56.70%** | **Recovery:** Soft-target KL guidance recovers **+0.52% accuracy** and reduces PPL from 9.89 to 9.45 |
 
-### B. Neural Machine Translation Benchmark (`Helsinki-NLP/opus-mt-en-vi` EN $\rightarrow$ VI)
-*Evaluating INT4 and extreme INT2 (2-bit, 4 discrete levels) on `Helsinki-NLP/opus-100`:*
+### B. Rigorous Neural Machine Translation Benchmark (`Helsinki-NLP/opus-mt-en-vi` EN $\rightarrow$ VI)
+*Evaluating SFT Teacher $\rightarrow$ PTQ Quantization Deficit $\rightarrow$ QAD Recovery on `Helsinki-NLP/opus-100`:*
 
-| Model Variant | Precision | Validation Loss | Perplexity (PPL) | Top-1 Token Accuracy | Qualitative Translation Sample ("What is it?") |
+| Model Variant | Precision | Validation Loss | Perplexity (PPL) | Top-1 Token Accuracy | Empirical Observations |
 | :--- | :---: | :---: | :---: | :---: | :--- |
-| **Teacher (FP32)** | FP32 | **6.4122** | **609.26** | **13.67%** | *"Cái gì vậy?"* (Natural baseline translation) |
-| **PTQ Student (INT4)** | INT4 | **6.4076** | **606.41** | **13.67%** | *"Cái gì vậy?"* (Preserves structure) |
-| **QAD Student (INT4)** | INT4 | **3.4261** | **30.76** | **32.10%** | *"Cái gì vậy?"* (Loss halved: 6.41 $\rightarrow$ 3.42, Acc doubled: 13.67% $\rightarrow$ 32.10%) |
-| **PTQ Student (INT2)** | INT2 | **10.6415** | **41,836.13** | **0.87%** | **Catastrophic Collapse:** Loss explodes +4.22, PPL breaks, Acc drops to 0.87% |
-| **QAD Student (INT2)** | INT2 | **4.9594** | **142.51** | **15.51%** | **Dramatic Rescue:** Loss dropped by -5.68, PPL recovered 290x from 41k to 142! |
+| **0. Raw Pretrained Base** | FP32 | **6.4122** | **609.26** | **13.67%** | Base MarianMT before domain specialization |
+| **1. SFT Teacher (Converged)**| FP32 | **2.9069** | **18.30** | **35.79%** | Fine-tuned to domain convergence (The True Teacher) |
+| **2. PTQ Student (INT4)** | INT4 | **2.9349** | **18.82** | **35.14%** | **Degradation:** Loss increases **+0.0280**, accuracy drops **-0.65%** |
+| **3. QAD Student (INT4)** | INT4 | **2.7758** | **16.05** | **38.83%** | **Recovery:** Recovers **-0.1591 loss**, accuracy surpasses Teacher to **38.83%** |
+| **4. PTQ Student (INT2)** | INT2 | **8.9057** | **7,373.82** | **1.41%** | **Catastrophic Collapse:** Extreme 2-bit error causes **+5.9987 loss explosion**, Acc drops to **1.41%** |
+| **5. QAD Student (INT2)** | INT2 | **4.0911** | **59.81** | **18.22%** | **Dramatic Rescue:** Loss dropped by **-4.8145**, PPL dropped **123x** (from 7373 to 59.81), Acc restored to **18.22%** |
 
 ### C. Lightweight Control Benchmark (`MiniTransformerLM`)
 *Fully controlled synthetic language structure benchmark:*
