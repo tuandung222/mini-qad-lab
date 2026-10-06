@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mini-qad-lab"
+version = "0.1.0"
+description = "Mini QAD Lab: Quantization-Aware Distillation (QAD) on Apple Silicon (MPS) & PyTorch"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Vo Pham Tuan Dung", email = "tuandung12092002@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.0.0",
+    "numpy>=1.24.0",
+    "matplotlib>=3.7.0",
+    "rich>=13.0.0",
+    "tqdm>=4.65.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+hf = [
+    "transformers>=4.40.0",
+    "datasets>=2.18.0",
+    "accelerate>=0.28.0",
+]
