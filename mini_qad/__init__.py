@@ -5,6 +5,7 @@ Mini QAD Lab: Quantization-Aware Distillation (QAD) on Apple Silicon (MPS) & PyT
 from .quantizer import FakeQuantizer, QuantFormat, quantize_ste
 from .modules import (
     QuantizedLinear,
+    QuantizedConv1D,
     convert_to_quantized_model,
     calibrate_model,
     freeze_quantizer_scales,
@@ -22,6 +23,7 @@ __all__ = [
     "QuantFormat",
     "quantize_ste",
     "QuantizedLinear",
+    "QuantizedConv1D",
     "convert_to_quantized_model",
     "calibrate_model",
     "freeze_quantizer_scales",

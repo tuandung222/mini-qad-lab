@@ -82,12 +82,24 @@ flowchart TD
 
 ## 📊 4. Empirical Results on Apple Silicon (M-series MPS)
 
-| Model State | Top-1 Next-Token Accuracy | Perplexity (PPL) | Description |
+### A. Real LLM Benchmark (`openai-community/gpt2` 124M on `tatsu-lab/alpaca`)
+*Evaluated on real instruction-tuning data using Apple Silicon MPS acceleration:*
+
+| Model Stage | Quantization | Validation Loss | Perplexity (PPL) | Validation Token Accuracy | Execution Notes |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| **1. Teacher (Baseline)** | FP32 | **3.8477** | **46.88** | — | Pretrained GPT-2 baseline on Alpaca prompt-response pairs |
+| **2. PTQ Student (Zero-Shot)** | INT4 | **3.8399** | **46.52** | — | Direct post-training quantization with STE layers |
+| **3. QAD Student (Distilled)** | INT4 | **2.6499** | **14.15** | **59.84%** | **Massive recovery & domain adaptation: PPL dropped 46.88 → 14.15** |
+
+### B. Lightweight Control Benchmark (`MiniTransformerLM`)
+*Fully controlled synthetic language structure benchmark:*
+
+| Model State | Accuracy (Top-1) | Perplexity (PPL) | Convergence Time |
 | :--- | :---: | :---: | :--- |
-| **1. Teacher (FP32 Baseline)** | **20.83%** | **13.16** | Full-precision unquantized baseline |
-| **2. PTQ Student (INT4 Zero-Shot)** | **20.71%** | **13.23** | Drop in accuracy immediately following quantization |
-| **3. QAT Student (Task Loss Only)** | **23.27%** | **8.96** | Hard-label fine-tuning on task data |
-| **4. QAD Student (Distillation Recovery)** | **21.22%** | **12.75** | **Fully recovers quantization deficit towards teacher distribution** |
+| **Teacher (FP32)** | **20.83%** | **13.16** | ~5.2s on MPS |
+| **PTQ Student (INT4)** | **20.71%** | **13.23** | Instant calibration |
+| **QAT Student (Task Loss)** | **23.27%** | **8.96** | 4 epochs (~4.3s) |
+| **QAD Student (Distillation)**| **20.87%** | **12.41** | 4 epochs (~4.4s) |
 
 ---
 

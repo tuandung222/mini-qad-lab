@@ -31,12 +31,13 @@ def evaluate_model(
     model: nn.Module,
     val_loader: DataLoader,
     device: torch.device,
+    ignore_index: int = -100,
 ) -> Dict[str, float]:
     """
     Evaluate validation loss, perplexity (PPL), and next-token accuracy.
     """
     model.eval()
-    ce_loss_fn = nn.CrossEntropyLoss()
+    ce_loss_fn = nn.CrossEntropyLoss(ignore_index=ignore_index)
 
     total_loss = 0.0
     total_tokens = 0
@@ -47,15 +48,22 @@ def evaluate_model(
             inputs = inputs.to(device)
             targets = targets.to(device)
 
-            logits = model(inputs)
-            loss = ce_loss_fn(logits.view(-1, logits.size(-1)), targets.view(-1))
+            out = model(inputs)
+            logits = out.logits if hasattr(out, "logits") else (out[0] if isinstance(out, (tuple, list)) else out)
 
-            preds = logits.argmax(dim=-1)
-            correct_tokens += (preds == targets).sum().item()
-            num_tokens = targets.numel()
-            total_tokens += num_tokens
+            flat_logits = logits.view(-1, logits.size(-1))
+            flat_targets = targets.view(-1)
 
-            total_loss += loss.item() * num_tokens
+            loss = ce_loss_fn(flat_logits, flat_targets)
+
+            preds = flat_logits.argmax(dim=-1)
+            valid_mask = flat_targets != ignore_index
+
+            valid_count = valid_mask.sum().item()
+            if valid_count > 0:
+                correct_tokens += ((preds == flat_targets) & valid_mask).sum().item()
+                total_tokens += valid_count
+                total_loss += loss.item() * valid_count
 
     avg_loss = total_loss / total_tokens if total_tokens > 0 else 0.0
     accuracy = (correct_tokens / total_tokens * 100.0) if total_tokens > 0 else 0.0
@@ -112,12 +120,14 @@ class QADTrainer:
 
             self.optimizer.zero_grad()
 
-            student_logits = self.student(inputs)
+            student_out = self.student(inputs)
+            student_logits = student_out.logits if hasattr(student_out, "logits") else (student_out[0] if isinstance(student_out, (tuple, list)) else student_out)
 
             teacher_logits = None
             if self.teacher is not None and self.loss_fn.alpha < 1.0:
                 with torch.no_grad():
-                    teacher_logits = self.teacher(inputs)
+                    teacher_out = self.teacher(inputs)
+                    teacher_logits = teacher_out.logits if hasattr(teacher_out, "logits") else (teacher_out[0] if isinstance(teacher_out, (tuple, list)) else teacher_out)
 
             loss, metrics = self.loss_fn(
                 student_logits=student_logits,

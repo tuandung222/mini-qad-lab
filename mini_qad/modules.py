@@ -114,6 +114,60 @@ class QuantizedLinear(nn.Module):
         return s
 
 
+class QuantizedConv1D(nn.Module):
+    """
+    Drop-in replacement for transformers.pytorch_utils.Conv1D (used in GPT-2)
+    with simulated weight quantization using Straight-Through Estimator.
+    """
+
+    def __init__(
+        self,
+        nf: int,
+        nx: int,
+        weight_format: QuantFormat = QuantFormat.INT8,
+        per_channel_weight: bool = True,
+    ):
+        super().__init__()
+        self.nf = nf
+        self.nx = nx
+        self.weight = nn.Parameter(torch.empty((nx, nf)))
+        self.bias = nn.Parameter(torch.zeros(nf))
+        self.weight_quantizer = FakeQuantizer(
+            format=weight_format,
+            per_channel=per_channel_weight,
+            symmetric=True,
+            ch_axis=1,
+        )
+
+    @classmethod
+    def from_conv1d(
+        cls,
+        conv1d,
+        weight_format: QuantFormat = QuantFormat.INT8,
+        per_channel_weight: bool = True,
+    ) -> "QuantizedConv1D":
+        device = conv1d.weight.device
+        dtype = conv1d.weight.dtype
+        qconv = cls(
+            nf=conv1d.nf,
+            nx=conv1d.weight.shape[0],
+            weight_format=weight_format,
+            per_channel_weight=per_channel_weight,
+        ).to(device=device, dtype=dtype)
+        with torch.no_grad():
+            qconv.weight.copy_(conv1d.weight)
+            if conv1d.bias is not None:
+                qconv.bias.copy_(conv1d.bias)
+            qconv.weight_quantizer.calibrate(qconv.weight)
+        return qconv
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        size_out = x.size()[:-1] + (self.nf,)
+        w_q = self.weight_quantizer(self.weight)
+        x = torch.addmm(self.bias, x.view(-1, x.size(-1)), w_q)
+        return x.view(size_out)
+
+
 def convert_to_quantized_model(
     model: nn.Module,
     weight_format: QuantFormat = QuantFormat.INT8,
@@ -122,7 +176,7 @@ def convert_to_quantized_model(
     exclude_modules: Optional[Set[str]] = None,
 ) -> nn.Module:
     """
-    Recursively replaces all nn.Linear layers in model with QuantizedLinear.
+    Recursively replaces all nn.Linear and Conv1D layers in model with Quantized counterparts.
     Returns a new or modified model.
     """
     if exclude_modules is None:
@@ -132,11 +186,20 @@ def convert_to_quantized_model(
         if name in exclude_modules:
             continue
 
+        is_conv1d = type(child).__name__ == "Conv1D" and not isinstance(child, QuantizedConv1D)
+
         if isinstance(child, nn.Linear) and not isinstance(child, QuantizedLinear):
             q_child = QuantizedLinear.from_float(
                 child,
                 weight_format=weight_format,
                 act_format=act_format,
+                per_channel_weight=per_channel_weight,
+            )
+            setattr(model, name, q_child)
+        elif is_conv1d:
+            q_child = QuantizedConv1D.from_conv1d(
+                child,
+                weight_format=weight_format,
                 per_channel_weight=per_channel_weight,
             )
             setattr(model, name, q_child)

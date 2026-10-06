@@ -29,7 +29,7 @@ from mini_qad import (
 
 def main():
     device = get_default_device()
-    model_name = "HuggingFaceTB/SmolLM-135M"  # Alternative: "openai-community/gpt2"
+    model_name = os.getenv("QAD_MODEL", "openai-community/gpt2")
 
     print("=" * 65)
     print(f"🚀 Real LLM QAD Experiment")
