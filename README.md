@@ -92,7 +92,18 @@ flowchart TD
 | **2. PTQ Student (Quantized)** | INT4 | **2.2919** | **9.89** | **56.18%** | **Degradation:** Quantization error costs **+0.1276 loss** and drops accuracy by **-2.19%** |
 | **3. QAD Student (Recovered)** | INT4 | **2.2461** | **9.45** | **56.70%** | **Recovery:** Soft-target KL guidance recovers **+0.52% accuracy** and reduces PPL from 9.89 to 9.45 |
 
-### B. Lightweight Control Benchmark (`MiniTransformerLM`)
+### B. Neural Machine Translation Benchmark (`Helsinki-NLP/opus-mt-en-vi` EN $\rightarrow$ VI)
+*Evaluating INT4 and extreme INT2 (2-bit, 4 discrete levels) on `Helsinki-NLP/opus-100`:*
+
+| Model Variant | Precision | Validation Loss | Perplexity (PPL) | Top-1 Token Accuracy | Qualitative Translation Sample ("What is it?") |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| **Teacher (FP32)** | FP32 | **6.4122** | **609.26** | **13.67%** | *"Cái gì vậy?"* (Natural baseline translation) |
+| **PTQ Student (INT4)** | INT4 | **6.4076** | **606.41** | **13.67%** | *"Cái gì vậy?"* (Preserves structure) |
+| **QAD Student (INT4)** | INT4 | **3.4261** | **30.76** | **32.10%** | *"Cái gì vậy?"* (Loss halved: 6.41 $\rightarrow$ 3.42, Acc doubled: 13.67% $\rightarrow$ 32.10%) |
+| **PTQ Student (INT2)** | INT2 | **10.6415** | **41,836.13** | **0.87%** | **Catastrophic Collapse:** Loss explodes +4.22, PPL breaks, Acc drops to 0.87% |
+| **QAD Student (INT2)** | INT2 | **4.9594** | **142.51** | **15.51%** | **Dramatic Rescue:** Loss dropped by -5.68, PPL recovered 290x from 41k to 142! |
+
+### C. Lightweight Control Benchmark (`MiniTransformerLM`)
 *Fully controlled synthetic language structure benchmark:*
 
 | Model State | Accuracy (Top-1) | Perplexity (PPL) | Convergence Time |
@@ -131,17 +142,23 @@ python examples/02_benchmark_recovery.py
 ```
 *Generated plots are automatically saved to `figures/benchmark_accuracy.png` and `figures/learning_curves.png`.*
 
-#### 3. Real Hugging Face LLM QAD Experiment (`SmolLM-135M`):
+#### 3. Real Hugging Face LLM QAD Experiment (`SmolLM` / `GPT-2` on `Alpaca`):
 ```bash
 python examples/04_real_llm_qad.py
 ```
 
-#### 4. Export Quantization Metadata to NVIDIA ModelOpt Specification:
+#### 4. Machine Translation Benchmark (English -> Vietnamese INT4 vs INT2):
+```bash
+python examples/05_translation_qad_int4_int2.py
+```
+*Generated plots are saved to `figures/translation_int4_int2_benchmark.png`.*
+
+#### 5. Export Quantization Metadata to NVIDIA ModelOpt Specification:
 ```bash
 python examples/03_modelopt_bridge.py
 ```
 
-#### 5. Execute Automated Unit Tests:
+#### 6. Execute Automated Unit Tests:
 ```bash
 pytest tests/
 ```
@@ -154,20 +171,21 @@ pytest tests/
 mini-qad-lab/
 ├── mini_qad/                     # Core Library
 │   ├── __init__.py
-│   ├── quantizer.py              # FakeQuantizer with Straight-Through Estimator (STE)
-│   ├── modules.py                # QuantizedLinear layer replacement utilities
+│   ├── quantizer.py              # FakeQuantizer with STE (supports INT8, INT4, INT2, FP8)
+│   ├── modules.py                # QuantizedLinear & QuantizedConv1D layer replacement
 │   ├── distill.py                # QADLoss (KL-divergence, Temperature scaling)
 │   ├── trainer.py                # Hardware-adaptive Trainer (Apple Silicon MPS / CUDA / CPU)
 │   ├── models.py                 # Causal MiniTransformerLM architecture
-│   ├── dataset.py                # Structured token sequence generators
+│   ├── dataset.py                # Real SFT/Alpaca dataset & token sequence generators
 │   └── visualizer.py             # Publication-ready matplotlib plotting utilities
 ├── examples/                     # Experimentation Scripts
 │   ├── 01_quickstart.py          # 30-second introductory demo
 │   ├── 02_benchmark_recovery.py  # 4-way comparison: FP32 vs PTQ vs QAT vs QAD
 │   ├── 03_modelopt_bridge.py     # Exports to NVIDIA ModelOpt hf_quant_config.json
-│   └── 04_real_llm_qad.py        # Real LLM QAD with Hugging Face SmolLM-135M
+│   ├── 04_real_llm_qad.py        # Real LLM QAD with GPT-2 on Alpaca
+│   └── 05_translation_qad_int4_int2.py # Translation (EN -> VI) evaluating INT4 & INT2
 ├── tests/                        # Unit Test Suite
-│   ├── test_quantizer.py         # STE gradient pass-through verification
+│   ├── test_quantizer.py         # STE gradient pass-through verification (INT8, INT4, INT2)
 │   ├── test_distill.py           # Mathematical correctness of KD loss
 │   └── test_modules.py           # Module conversion and backward flow tests
 ├── figures/                      # Benchmark plots and metric JSONs

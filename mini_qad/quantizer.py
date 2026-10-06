@@ -13,6 +13,7 @@ from torch.autograd import Function
 class QuantFormat(str, Enum):
     INT8 = "int8"
     INT4 = "int4"
+    INT2 = "int2"
     FP8_E4M3 = "fp8_e4m3"
 
 
@@ -72,6 +73,10 @@ class FakeQuantizer(nn.Module):
         elif self.format == QuantFormat.INT4:
             self.qmin = -8.0 if not symmetric else -7.0
             self.qmax = 7.0
+        elif self.format == QuantFormat.INT2:
+            # 2-bit quantization (4 discrete levels)
+            self.qmin = -2.0 if not symmetric else -1.0
+            self.qmax = 1.0
         elif self.format == QuantFormat.FP8_E4M3:
             # Simulated FP8 E4M3 range: [-448, 448]
             self.qmin = -448.0

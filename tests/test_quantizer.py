@@ -41,3 +41,16 @@ def test_fake_quantizer_int4():
 
     assert x_q.shape == x.shape
     assert quantizer.scale.shape[0] == 8  # per-channel along dim 0
+
+
+def test_fake_quantizer_int2():
+    quantizer = FakeQuantizer(format=QuantFormat.INT2, per_channel=False, symmetric=False)
+    x = torch.randn(10, 10) * 4.0
+    x_q = quantizer(x)
+
+    assert x_q.shape == x.shape
+    scale = quantizer.scale.item()
+    steps = torch.round(x_q / scale)
+    assert steps.min().item() >= quantizer.qmin
+    assert steps.max().item() <= quantizer.qmax
+
